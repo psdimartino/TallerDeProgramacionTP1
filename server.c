@@ -14,47 +14,62 @@
 #define NI_MAXHOST 1025
 #define NI_MAXSERV 32
 
-int main(int argc, char *argv[]){
-    char *key;
-    char *port;
+int main(int argc, char *argv[] ) {
+    unsigned char buf[BUF_SIZE];
     enum encoder_e algoritm = RC4;
-
-    if(argInterpreter_server(argc,argv,&key,&algoritm, &port)){
-        return 1;
-    }
-    
     encoder_t encoder;
-    if(encoder_init(&encoder,algoritm,(unsigned char *)key,strlen(key))){
-        return 1;
-    }
-    
     socket_t skt;
-    socket_init(&skt);
-    unsigned char buf[BUF_SIZE],buf2[BUF_SIZE];
+    char *port;
+    char *key;
 
-    if(socket_bind(&skt,argv[1])){
+    if ( argInterpreter_server(argc, argv, &key, &algoritm, &port ) ) {
         return 1;
     }
-    if(socket_listen(&skt)){
+    if ( encoder_init(&encoder, algoritm, (unsigned char *)key, strlen(key)) ) {
         return 1;
     }
-    if(socket_accept(&skt)){
+    if ( socket_init(&skt) ) {
+        encoder_uninit(&encoder);
         return 1;
     }
-    while (socket_isUp(&skt)){
-        int read;   
-        if((read = socket_read(&skt,buf,BUF_SIZE)) == -1){
+    if ( socket_bind(&skt, argv[1]) ) {
+        encoder_uninit(&encoder);
+        return 1;
+    }
+    if ( socket_listen(&skt) ) {
+        socket_uninit(&skt);
+        encoder_uninit(&encoder);
+        return 1;
+    }
+    if ( socket_accept(&skt) ) {
+        socket_uninit(&skt);
+        encoder_uninit(&encoder);
+        return 1;
+    }
+    while ( socket_isUp(&skt) ) {
+        int read;
+        memset(buf, 0, BUF_SIZE);  // Valgrind warning of uninitialized bytes
+        if ( (read = socket_read(&skt, buf, BUF_SIZE)) == -1 ) {
+            socket_uninit(&skt);
+            encoder_uninit(&encoder);
             return 1;
         }
-        if(encoder_decode(&encoder,buf,buf2,BUF_SIZE)){
+        if ( encoder_decode(&encoder, buf, buf, BUF_SIZE) ) {
+            socket_uninit(&skt);
+            encoder_uninit(&encoder);
             return 1;
         }
-        write(0,buf2,read);
+        if ( write(1, buf, read) == -1 ) {
+            socket_uninit(&skt);
+            encoder_uninit(&encoder);
+            return 1;
+        }
     }
-    if(socket_uninit(&skt)){
+    if ( socket_uninit(&skt) ) {
+        encoder_uninit(&encoder);
         return 1;
     }
-    if(encoder_uninit(&encoder)){
+    if ( encoder_uninit(&encoder) ) {
         return 1;
     }
 }

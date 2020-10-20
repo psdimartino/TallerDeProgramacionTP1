@@ -14,54 +14,54 @@
 #define BUFFER_SIZE 64
 #define KEY_MAXLENGTH 64
 
-int main(int argc, char *argv[]){
+int main(int argc, char *argv[]) {
     char *key = NULL , *service = NULL, *port = NULL;
     enum encoder_e algoritm = RC4;
     bool stream_ended = false;
     unsigned char buf[BUFFER_SIZE];
-
-    if(argInterpreter_client(argc,argv,&key,&algoritm, &service, &port)){
+    if ( argInterpreter_client(argc, argv, &key, &algoritm, &service, &port) ) {
         return 1;
     }
-    // printf("key: %s, algoritm: %i, service: %s, port: %s \n",key,algoritm,service,port);
     encoder_t encoder;
-    if(encoder_init(&encoder,algoritm,(unsigned char *)key,strlen((char *)key))){
+    if ( encoder_init(&encoder, algoritm, (unsigned char*)key, strlen(key)) ) {
         return 1;
     }
-    
     socket_t skt;
-    if(socket_init(&skt)){
+    if ( socket_init(&skt) ) {
         encoder_uninit(&encoder);
         return 1;
     }
-    if(socket_connect(&skt, argv[2], argv[1])){
+    if ( socket_connect(&skt, argv[2], argv[1]) ) {
         encoder_uninit(&encoder);
         return 1;
     }
-    while (!stream_ended){
+    while (!stream_ended) {
         int input_size;
-        if((input_size = read(0,buf,BUFFER_SIZE)) == -1){
+        if ( (input_size = read(0, buf, BUFFER_SIZE) ) == -1 ) {
             socket_uninit(&skt);
             encoder_uninit(&encoder);
             return 1;
         }
-        if(input_size < BUFFER_SIZE) stream_ended = true;
-        if(encoder_encode(&encoder,buf,buf,input_size)){
+        if ( input_size < BUFFER_SIZE) stream_ended = true;
+        if ( encoder_encode(&encoder, buf, buf, input_size) ) {
             socket_uninit(&skt);
             encoder_uninit(&encoder);
             return 1;
         }
-        if(socket_send_chunk(&skt, (char *)buf, input_size)){
+        // for (int i = 0; i < 3; i++){
+        //     printf("%02X|", buf[i]);
+        // }
+        if ( socket_send(&skt, (char *)buf, input_size) ) {
             socket_uninit(&skt);
             encoder_uninit(&encoder);
             return 1;
         }
     }
-    if(socket_uninit(&skt)){
+    if ( socket_uninit(&skt) ) {
         encoder_uninit(&encoder);
         return 1;
     }
-    if(encoder_uninit(&encoder)){
+    if ( encoder_uninit(&encoder) ) {
         return 1;
     }
     return 0;

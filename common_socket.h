@@ -22,9 +22,9 @@ int socket_init(socket_t *self);
 
 int socket_connect(socket_t *self, const char *service, const char *port);
 
-int socket_send_chunk(socket_t *self, const char *data, unsigned int length);
+int socket_send(socket_t *self, const char *data, unsigned int length);
 
-int socket_read(socket_t *self, unsigned char *buffer, unsigned int length);
+int socket_read(socket_t *self, unsigned char *buffer, int length);
 
 int socket_uninit(socket_t *self);
 
